@@ -298,7 +298,8 @@ class SegFaceCeleb(nn.Module):
                 self.multi_scale_features.append(output) ### ConvNext, ResNet, EfficientNet, MobileNet
         return hook
 
-    def forward(self, x, labels, dataset):
+    # def forward(self, x, labels, dataset):
+    def forward(self, x):
         self.multi_scale_features.clear()
         
         _,_,h,w = x.shape
@@ -338,11 +339,12 @@ if __name__ == "__main__":
 
     x = torch.randn(batch_size, num_channels, height, width)
     
-    labels = {
-        "lnm_seg": torch.randn(batch_size, 5, 2)
-    }
+    # labels = {
+    #     "lnm_seg": torch.randn(batch_size, 5, 2)
+    # }
     
-    dataset = torch.tensor([0,0,0,0])
+    # dataset = torch.tensor([0,0,0,0])
 
-    seg_output = model(x, labels, dataset)
+    #seg_output = model(x, labels, dataset)
+    seg_output = model(x)
     print("Segmentation Output Shape:", seg_output.shape)
