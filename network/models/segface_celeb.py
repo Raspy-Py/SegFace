@@ -122,7 +122,7 @@ class PositionEmbeddingRandom(nn.Module):
     Positional encoding using random spatial frequencies.
     """
 
-    def __init__(self, num_pos_feats: int = 64, scale: Optional[float] = None, half=False) -> None:
+    def __init__(self, num_pos_feats: int = 64, half=False, scale: Optional[float] = None) -> None:
         super().__init__()
         self.half = half
         if scale is None or scale <= 0.0:
@@ -228,7 +228,7 @@ class SegFaceCeleb(nn.Module):
             convnext = convnext_small(pretrained=True)
             self.backbone = torch.nn.Sequential(*(list(convnext.children())[:-1]))
             self.target_layer_names = ['0.1', '0.3', '0.5', '0.7']
-            self.multi_scale_features = []           
+            self.multi_scale_features = []        
         
         if self.model == "resnet":
             resnet101 = models.resnet101(pretrained=True)
