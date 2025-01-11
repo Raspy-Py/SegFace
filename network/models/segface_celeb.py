@@ -117,24 +117,26 @@ class FaceDecoder(nn.Module):
         
         return seg_output
 
-
 class PositionEmbeddingRandom(nn.Module):
     """
     Positional encoding using random spatial frequencies.
     """
 
-    def __init__(self, num_pos_feats: int = 64, scale: Optional[float] = None) -> None:
+    def __init__(self, num_pos_feats: int = 64, scale: Optional[float] = None, half=False) -> None:
         super().__init__()
+        self.half = half
         if scale is None or scale <= 0.0:
             scale = 1.0
         self.register_buffer(
             "positional_encoding_gaussian_matrix",
-            scale * torch.randn((2, num_pos_feats)),
+            scale * torch.randn((2, num_pos_feats)).half() if self.half 
+            else scale * torch.randn((2, num_pos_feats))
         )
 
     def _pe_encoding(self, coords: torch.Tensor) -> torch.Tensor:
         """Positionally encode points that are normalized to [0,1]."""
-        # assuming coords are in [0, 1]^2 square and have d_1 x ... x d_n x 2 shape
+        # Convert coords to match PE matrix dtype
+        coords = coords.to(dtype=self.positional_encoding_gaussian_matrix.dtype)
         coords = 2 * coords - 1
         coords = coords @ self.positional_encoding_gaussian_matrix
         coords = 2 * np.pi * coords
@@ -145,7 +147,8 @@ class PositionEmbeddingRandom(nn.Module):
         """Generate positional encoding for a grid of the specified size."""
         h, w = size
         device: Any = self.positional_encoding_gaussian_matrix.device
-        grid = torch.ones((h, w), device=device, dtype=torch.float32)
+        dtype = torch.float16 if self.half else torch.float32
+        grid = torch.ones((h, w), device=device, dtype=dtype)
         y_embed = grid.cumsum(dim=0) - 0.5
         x_embed = grid.cumsum(dim=1) - 0.5
         y_embed = y_embed / h
@@ -161,7 +164,7 @@ class PositionEmbeddingRandom(nn.Module):
         coords = coords_input.clone()
         coords[:, :, 0] = coords[:, :, 0] / image_size[1]
         coords[:, :, 1] = coords[:, :, 1] / image_size[0]
-        return self._pe_encoding(coords.to(torch.float))  # B x N x C
+        return self._pe_encoding(coords.to(torch.float16 if self.half else torch.float32))  # B x N x C
 
 
 class SegfaceMLP(nn.Module):
@@ -179,10 +182,11 @@ class SegfaceMLP(nn.Module):
         return hidden_states
 
 class SegFaceCeleb(nn.Module):
-    def __init__(self, input_resolution, model):
+    def __init__(self, input_resolution, model, half):
         super(SegFaceCeleb, self).__init__()
         self.input_resolution = input_resolution
         self.model = model
+        self.half
 
         if self.model == "swin_base":
             swin_v2 = swin_b(weights='IMAGENET1K_V1')
@@ -247,7 +251,7 @@ class SegFaceCeleb(nn.Module):
         embed_dim = 1024
         out_chans = 256
         
-        self.pe_layer = PositionEmbeddingRandom(out_chans // 2)   
+        self.pe_layer = PositionEmbeddingRandom(out_chans // 2, self.half)   
 
         for name, module in self.backbone.named_modules():
             if name in self.target_layer_names:
