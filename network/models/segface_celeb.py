@@ -182,11 +182,12 @@ class SegfaceMLP(nn.Module):
         return hidden_states
 
 class SegFaceCeleb(nn.Module):
-    def __init__(self, input_resolution, model, half):
+    def __init__(self, input_resolution, model, half, backbone_only):
         super(SegFaceCeleb, self).__init__()
         self.input_resolution = input_resolution
         self.model = model
-        self.half
+        self.half = half
+        self.backbone_only = backbone_only
 
         if self.model == "swin_base":
             swin_v2 = swin_b(weights='IMAGENET1K_V1')
@@ -308,6 +309,8 @@ class SegFaceCeleb(nn.Module):
         
         _,_,h,w = x.shape
         features = self.backbone(x).squeeze()
+        if self.backbone_only:
+            return self.multi_scale_features
         
         batch_size = self.multi_scale_features[-1].shape[0]
         all_hidden_states = ()
@@ -330,6 +333,7 @@ class SegFaceCeleb(nn.Module):
             )
     
         return seg_output
+    
 
 if __name__ == "__main__":
     input_resolution = 512
